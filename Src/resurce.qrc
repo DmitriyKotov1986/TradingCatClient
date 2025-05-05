@@ -1,0 +1,33 @@
+<RCC>
+    <qresource prefix="/icon">
+        <file>img/cat_walk_icon.ico</file>
+        <file>img/hungry_cat_icon.ico</file>
+        <file>img/error.ico</file>
+        <file>img/sing_cat_icon.ico</file>
+        <file>img/slippers_cat_icon.ico</file>
+    </qresource>
+    <qresource prefix="/image">
+        <file>img/decrease.png</file>
+        <file>img/increase.png</file>
+        <file>img/cancel_icon.png</file>
+        <file>img/ok_icon.png</file>
+        <file>img/cage_cat_icon.png</file>
+        <file>img/add.png</file>
+        <file>img/remove.png</file>
+        <file>img/add2.png</file>
+        <file>img/remove2.png</file>
+        <file>img/ok.png</file>
+        <file>img/info.png</file>
+        <file>img/182507_cat_walk_icon.png</file>
+        <file>img/decrease_star.png</file>
+        <file>img/increase_star.png</file>
+        <file>img/BINANCE.png</file>
+        <file>img/BYBIT.png</file>
+        <file>img/GATE.png</file>
+        <file>img/KUCOIN.png</file>
+        <file>img/MEXC.png</file>
+        <file>img/BITGET.png</file>
+        <file>img/BINGX.png</file>
+        <file>img/OKX.png</file>
+    </qresource>
+</RCC>
