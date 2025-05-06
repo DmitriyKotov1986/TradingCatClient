@@ -629,9 +629,9 @@ void MainWindow::showChart(const TradingCatCommon::PKLinesList &klinesData, cons
                                       .arg(klineId.symbol)
                                       .arg(KLineTypeToString(klineId.type)));
 
-    double max = std::numeric_limits<double>::min();
-    double min = std::numeric_limits<double>::max();
-    double maxVolume = std::numeric_limits<double>::min();
+    float max = std::numeric_limits<float>::min();
+    float min = std::numeric_limits<float>::max();
+    float maxVolume = std::numeric_limits<float>::min();
 
     quint64 index = 0;
     const auto count = static_cast<quint64>(_viewCount);
@@ -649,7 +649,7 @@ void MainWindow::showChart(const TradingCatCommon::PKLinesList &klinesData, cons
         ++index;
 
         {
-            auto candlestick = new QCandlestickSet(kline->closeTime.toMSecsSinceEpoch());
+            auto candlestick = new QCandlestickSet(kline->closeTime);
             candlestick->setHigh(kline->high);
             candlestick->setLow(kline->low);
             candlestick->setOpen(kline->open);
@@ -662,7 +662,7 @@ void MainWindow::showChart(const TradingCatCommon::PKLinesList &klinesData, cons
         }
 
         {
-            auto candlestickVolume = new QCandlestickSet(kline->closeTime.toMSecsSinceEpoch());
+            auto candlestickVolume = new QCandlestickSet(kline->closeTime);
             candlestickVolume->setOpen(kline->volume);
             candlestickVolume->setHigh(kline->volume);
             candlestickVolume->setLow(0);
@@ -684,8 +684,8 @@ void MainWindow::showChart(const TradingCatCommon::PKLinesList &klinesData, cons
     _chartView->hide();
 
     auto axisX = qobject_cast<QDateTimeAxis*>(_chartView->chart()->axes(Qt::Horizontal).at(0));
-    axisX->setMax(firstKLine->closeTime.addMSecs(static_cast<qint64>(klineId.type) * 5));
-    axisX->setMin(lastKLine->closeTime.addMSecs(-static_cast<qint64>(klineId.type)));
+    axisX->setMax(QDateTime::fromMSecsSinceEpoch(firstKLine->closeTime + static_cast<qint64>(klineId.type) * 5));
+    axisX->setMin(QDateTime::fromMSecsSinceEpoch(lastKLine->closeTime - static_cast<qint64>(klineId.type)));
     axisX->setTickCount(5);
 
     auto axisY = qobject_cast<QValueAxis*>(_chartView->chart()->axes(Qt::Vertical).at(0));
@@ -722,9 +722,9 @@ void MainWindow::showReviewChart(const TradingCatCommon::PKLinesList &klinesData
                                             .arg(klineId.symbol)
                                             .arg(KLineTypeToString(klineId.type)));
 
-    double max = std::numeric_limits<double>::min();
-    double min = std::numeric_limits<double>::max();
-    double maxVolume = std::numeric_limits<double>::min();
+    float max = std::numeric_limits<float>::min();
+    float min = std::numeric_limits<float>::max();
+    float maxVolume = std::numeric_limits<float>::min();
 
     quint64 index = 0;
     const auto count = static_cast<quint64>(_reviewCount);
@@ -742,7 +742,7 @@ void MainWindow::showReviewChart(const TradingCatCommon::PKLinesList &klinesData
         ++index;
 
         {
-            auto candlestick = new QCandlestickSet(kline->closeTime.toMSecsSinceEpoch());
+            auto candlestick = new QCandlestickSet(kline->closeTime);
 
             candlestick->setHigh(kline->high);
             candlestick->setLow(kline->low);
@@ -756,7 +756,7 @@ void MainWindow::showReviewChart(const TradingCatCommon::PKLinesList &klinesData
         }
 
         {
-            auto candlestickVolume = new QCandlestickSet(kline->closeTime.toMSecsSinceEpoch());
+            auto candlestickVolume = new QCandlestickSet(kline->closeTime);
             candlestickVolume->setOpen(kline->volume);
             candlestickVolume->setHigh(kline->volume);
             candlestickVolume->setLow(0);
@@ -778,8 +778,8 @@ void MainWindow::showReviewChart(const TradingCatCommon::PKLinesList &klinesData
     _reviewChartView->hide();
 
     auto axisX = qobject_cast<QDateTimeAxis*>(_reviewChartView->chart()->axes(Qt::Horizontal).at(0));
-    axisX->setMax(firstKLine->closeTime.addMSecs(static_cast<qint64>(klineId.type) * 5));
-    axisX->setMin(lastKLine->closeTime.addMSecs(-static_cast<qint64>(klineId.type)));
+    axisX->setMax(QDateTime::fromMSecsSinceEpoch(firstKLine->closeTime + static_cast<qint64>(klineId.type) * 5));
+    axisX->setMin(QDateTime::fromMSecsSinceEpoch(lastKLine->closeTime- static_cast<qint64>(klineId.type)));
     axisX->setTickCount(5);
 
     auto axisY = qobject_cast<QValueAxis*>(_reviewChartView->chart()->axes(Qt::Vertical).at(0));
@@ -815,7 +815,7 @@ QListWidgetItem* MainWindow::addDetectToEventList(const TradingCatCommon::Detect
                              .arg(detectData->delta)
                              .arg(detectData->volume);
 
-
+    qInfo() << "Detect:" << detectData->msg;
 
     auto item = new QListWidgetItem(text);
     item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
@@ -1020,6 +1020,8 @@ void MainWindow::showRemovePushButton()
 QColor MainWindow::stockExchangeColor(const TradingCatCommon::StockExchangeID &stockExchangeId)
 {
     const auto& stockExchangeName = stockExchangeId.name;
+
+    //Spot
     if (stockExchangeName == "MEXC")
     {
         return Qt::yellow; //желтый
@@ -1052,6 +1054,17 @@ QColor MainWindow::stockExchangeColor(const TradingCatCommon::StockExchangeID &s
     {
         return QColor(255, 163, 72); // оранжевый
     }
+
+    //Futures
+    else if (stockExchangeName == "KUCOIN_FUTURES")
+    {
+        return QColor(246, 127, 110);  //красный
+    }
+    else if (stockExchangeName == "BITGET_FUTURES")
+    {
+        return QColor(200, 230, 230); //серый
+    }
+
     else
     {
         return Qt::gray;
