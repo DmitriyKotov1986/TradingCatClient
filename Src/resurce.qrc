@@ -31,5 +31,6 @@
         <file>img/OKX.png</file>
         <file>img/KUCOIN_FUTURES.png</file>
         <file>img/BITGET_FUTURES.png</file>
+        <file>img/GATE_FUTURES.png</file>
     </qresource>
 </RCC>

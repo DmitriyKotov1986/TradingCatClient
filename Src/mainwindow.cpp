@@ -331,7 +331,7 @@ void MainWindow::makeChart()
     _seriesVolume->setCapsVisible(true);
     _seriesVolume->setMinimumColumnWidth(-1.0);
     _seriesVolume->setMaximumColumnWidth(50.0);
-    _seriesVolume->setCapsWidth(0.5);
+    _seriesVolume->setCapsWidth(0.3);
     _seriesVolume->setBodyWidth(0.5);
     _seriesVolume->setUseOpenGL(true);
     _seriesVolume->setPen(pen);
@@ -941,9 +941,16 @@ QComboBox* MainWindow::makeStockExchangeComboBox(const QString &stockExchange) c
 
     stockExchangeComboBox->addItem(*STOCKEXCHANGE_NAME_ALL);
 
+    QStringList stockExchangeNames;
     for (const auto& stockExchangeId: _stockExchengeIDList)
     {
-        stockExchangeComboBox->addItem(QIcon(QString(":/image/img/%1.png").arg(stockExchangeId.name)), stockExchangeId.name);
+        stockExchangeNames.push_back(stockExchangeId.name);
+    }
+    stockExchangeNames.sort();
+
+    for (const auto& stockExchangeName: stockExchangeNames)
+    {
+        stockExchangeComboBox->addItem(QIcon(QString(":/image/img/%1.png").arg(stockExchangeName)), stockExchangeName);
     }
 
     stockExchangeComboBox->setCurrentText(stockExchange);
@@ -1063,6 +1070,10 @@ QColor MainWindow::stockExchangeColor(const TradingCatCommon::StockExchangeID &s
     else if (stockExchangeName == "BITGET_FUTURES")
     {
         return QColor(200, 230, 230); //серый
+    }
+    else if (stockExchangeName == "GATE_FUTURES")
+    {
+        return QColor(153, 223, 255); //серый
     }
 
     else
