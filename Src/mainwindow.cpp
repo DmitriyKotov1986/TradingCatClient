@@ -1061,6 +1061,10 @@ QColor MainWindow::stockExchangeColor(const TradingCatCommon::StockExchangeID &s
     {
         return QColor(255, 163, 72); // оранжевый
     }
+    else if (stockExchangeName == "HTX")
+    {
+        return QColor(5, 55, 155); // синий
+    }
 
     //Futures
     else if (stockExchangeName == "KUCOIN_FUTURES")
@@ -1074,6 +1078,10 @@ QColor MainWindow::stockExchangeColor(const TradingCatCommon::StockExchangeID &s
     else if (stockExchangeName == "GATE_FUTURES")
     {
         return QColor(153, 223, 255); //серый
+    }
+    else if (stockExchangeName == "BYBIT_FUTURES")
+    {
+        return QColor(97, 83, 161); //фиолетовый
     }
 
     else
