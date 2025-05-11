@@ -34,5 +34,6 @@
         <file>img/GATE_FUTURES.png</file>
         <file>img/BYBIT_FUTURES.png</file>
         <file>img/HTX.png</file>
+        <file>img/MEXC_FUTURES.png</file>
     </qresource>
 </RCC>

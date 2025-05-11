@@ -28,6 +28,8 @@ constexpr static const int KLINE_NAME_ROLE = Qt::UserRole + 1;
 
 constexpr static const int MAX_ITEM_COUNT = 10000;
 
+constexpr static const qint64 LAST_DETECT_TIMEOUT = 1000 * 60 * 5; //5min
+
 Q_GLOBAL_STATIC_WITH_ARGS(const QString, STOCKEXCHANGE_NAME_ALL, ("ALL"));
 
 // static
@@ -506,12 +508,8 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
             const auto& detect = _getKLineDetectData.at(data.toULongLong());
             const auto& klineId = detect->history->front()->id;
 
-            auto klineName = klineId.symbol;
-            klineName = klineName.first(klineName.indexOf("USDT"));
-            klineName = klineName.remove(QRegularExpression("[^A-Z0-9]"));
-
             auto clipboard = QApplication::clipboard();
-            clipboard->setText(klineName);
+            clipboard->setText(klineId.baseName());
 
             qDebug() << "Symbol name copy to clipboard:" << clipboard->text();
 
@@ -828,13 +826,14 @@ QListWidgetItem* MainWindow::addDetectToEventList(const TradingCatCommon::Detect
 
     item->setForeground(stockExchangeColor(detectData->stockExchangeId));
 
+    const auto isDetected = isLastDetected(detectData->stockExchangeId, kline->id, kline->closeTime);
     if (kline->open <= kline->close)
     {
-        item->setIcon(QIcon(":/image/img/increase.png"));
+        item->setIcon(isDetected ? QIcon(":/image/img/increase_star.png") : QIcon(":/image/img/increase.png"));
     }
     else
     {
-        item->setIcon(QIcon(":/image/img/decrease.png"));
+        item->setIcon(isDetected ? QIcon(":/image/img/decrease_star.png") : QIcon(":/image/img/decrease.png"));
     }
 
     while (ui->eventsList->count() >= MAX_ITEM_COUNT)
@@ -1083,10 +1082,32 @@ QColor MainWindow::stockExchangeColor(const TradingCatCommon::StockExchangeID &s
     {
         return QColor(97, 83, 161); //фиолетовый
     }
+    if (stockExchangeName == "MEXC_FUTURES")
+    {
+        return Qt::darkYellow; //желтый
+    }
 
     else
     {
         return Qt::gray;
     }
+}
+
+bool MainWindow::isLastDetected(const TradingCatCommon::StockExchangeID &stockExchangeId, const TradingCatCommon::KLineID &klineId, qint64 time)
+{
+    const auto hash = std::hash<QString>()(klineId.baseName());  //+ 49831 * std::hash<TradingCatCommon::StockExchangeID>()(stockExchangeId);
+    const auto it_lastDetected = _lastDetected.find(hash);
+    if (it_lastDetected == _lastDetected.end())
+    {
+        _lastDetected.emplace(hash, time);
+
+        return false;
+    }
+
+    auto& klineTime = it_lastDetected->second;
+    const auto result = (time - klineTime) < LAST_DETECT_TIMEOUT;
+    klineTime= time;
+
+    return result;
 }
 

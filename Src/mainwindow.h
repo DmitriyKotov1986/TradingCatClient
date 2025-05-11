@@ -118,6 +118,8 @@ private:
 
     QColor stockExchangeColor(const TradingCatCommon::StockExchangeID& stockExchangeId);
 
+    bool isLastDetected(const TradingCatCommon::StockExchangeID& stockExchangeId, const TradingCatCommon::KLineID& klineId, qint64 time);
+
 private:
     Ui::MainWindow *ui;
 
@@ -141,9 +143,6 @@ private:
 
     TradingCatCommon::StockExchangesIDList _stockExchengeIDList;
 
-  //  QHash<quint64, TradingCatCommon::Detector::PKLineDetectData> _klines; //список отфильтрованных свечей поступивших от сервера
-    quint64 _currentKLineIndex = 0;
-
     bool _login = false;
     TradingCatCommon::UserConfig _userConfig; //текущие настройки пользователя
 
@@ -157,6 +156,9 @@ private:
     QChartView *_reviewChartView = nullptr;
     LocalConfig::EReviewHistoryKLineCount _reviewCount = LocalConfig::EReviewHistoryKLineCount::MAX;
 
-    std::unordered_map<quint64, TradingCatCommon::Detector::PKLineDetectData> _getKLineDetectData;
+    quint64 _currentKLineIndex = 0;
+    std::unordered_map<quint64, TradingCatCommon::Detector::PKLineDetectData> _getKLineDetectData;//список отфильтрованных свечей поступивших от сервера
+
+    std::unordered_map<qint64, qint64> _lastDetected; ///< Список последних фотфильтрованных свечей. Ключ - хэш ИД свечи, значене - время детектирования
 };
 
