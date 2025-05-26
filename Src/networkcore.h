@@ -1,8 +1,9 @@
 #pragma once
 
 //STL
-#include <memory.h>
+#include <memory>
 #include <unordered_map>
+#include <queue>
 
 //Qt
 #include <QObject>
@@ -37,6 +38,7 @@ signals:
 
     void klineDetect(const TradingCatCommon::Detector::KLinesDetectedList& detectData);
     void stockExchanges(const TradingCatCommon::StockExchangesIDList& stockExchangesIdList);
+    void klinesIdList(const TradingCatCommon::StockExchangeID& stockExchangesIdList, const TradingCatCommon::PKLinesIDList& klinesIdList);
 
     /*!
         Дополнительное сообщение логеру
@@ -62,7 +64,7 @@ private slots:
         @param msg - сообщение об ошибке
         @param id - ИД запроса
     */
-    void errorOccurredHttp(QNetworkReply::NetworkError code, quint64 serverCode, const QString& msg, quint64 id);
+    void errorOccurredHttp(QNetworkReply::NetworkError code, quint64 serverCode, const QString& msg, quint64 id, const QByteArray& answer);
 
     /*!
         Дополнительное сообщение логеру
@@ -80,12 +82,14 @@ private:
 
     void sendLogin();
     void sendStockExchanges();
+    void sendKLinesIdList();
     void sendConfig(const TradingCatCommon::UserConfig& config);
     void sendLogout();
     void sendDetect();
 
     bool parseLogin(const QByteArray& answer);
     bool parseStockExchanges(const QByteArray& answer);
+    bool parseKLinesIdList(const QByteArray& answer);
     bool parseConfig(const QByteArray& answer);
     bool parseLogout(const QByteArray& answer);
     bool parseDetect(const QByteArray& answer);
@@ -93,9 +97,11 @@ private:
 private:
     const LocalConfig& _cfg;
 
-    std::unique_ptr<Common::HTTPSSLQuery> _http;
+    std::unique_ptr<Common::HTTPSSLQuery> _http;  ///> Класс обработки http запросов
 
-    std::unordered_map<quint64, TradingCatCommon::Query*> _sentQuery;
+    std::unordered_map<quint64, TradingCatCommon::Query*> _sentQuery; ///< список отправленных запросов на которые еще не получет ответ
+
+    TradingCatCommon::StockExchangesIDList _unGetKLinesId;
 
     bool _isStarted = false;
 

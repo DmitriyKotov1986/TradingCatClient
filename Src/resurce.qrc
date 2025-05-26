@@ -5,6 +5,7 @@
         <file>img/error.ico</file>
         <file>img/sing_cat_icon.ico</file>
         <file>img/slippers_cat_icon.ico</file>
+        <file>img/cage_cat_icon.ico</file>
     </qresource>
     <qresource prefix="/image">
         <file>img/decrease.png</file>

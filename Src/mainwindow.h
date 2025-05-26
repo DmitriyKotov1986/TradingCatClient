@@ -27,6 +27,7 @@
 
 #include "networkcore.h"
 #include "localconfig.h"
+#include "eventlistmenu.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -40,7 +41,7 @@ class MainWindow
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
     bool keyPress(const EmscriptenKeyboardEvent *keyEvent);
@@ -58,10 +59,9 @@ private slots:
     // NetworkCore
     void loginNetworkCore(const TradingCatCommon::UserConfig& userConfig);
     void logoutNetworkCore();
-
     void klineDetectNetworkCore(const TradingCatCommon::Detector::KLinesDetectedList& detectData);
-
     void stockExchangesNetworkCore(const TradingCatCommon::StockExchangesIDList& stockExchangesIdList);
+    void klinesIdListNetworkCore(const TradingCatCommon::StockExchangeID& stockExchangesId, const TradingCatCommon::PKLinesIDList& klinesIdList);
 
     /*!
         Дополнительное сообщение логеру
@@ -71,6 +71,8 @@ private slots:
     void sendLogMsgNetworkCore(Common::TDBLoger::MSG_CODE category, const QString& msg);
 
     //UI
+    void mainTabWidgetCurrentChanged(int index);
+
     //Main tab
     void detectorSplitterSplitterMoved(int pos, int index);
     void eventListItemClicked(QListWidgetItem *item);
@@ -90,7 +92,13 @@ private slots:
     //Filter tab
     void addPushButtonClicked();
     void removePushButtonClicked();
-    void mainTabWidgetCurrentChanged(int index);
+
+
+    void addBlackListPushButtonClicked();
+    void removeBlackListPushButtonClicked();
+
+    void customContextMenuRequestedEventList(const QPoint &pos);
+    void clickedItemEventListMenu(EventListMenu::EMenuItemType type, quint64 index);
 
 private:
     void makeChart();
@@ -98,6 +106,9 @@ private:
 
     void makeFilterTab();
     void clearFilterTab();
+
+    void makeBlackListTab();
+    void clearBlackListTab();
 
     void sendLogMsg(Common::TDBLoger::MSG_CODE category, const QString& msg);
 
@@ -112,9 +123,13 @@ private:
     void updateReviewHistoryChart(quint64 index);
 
     QComboBox* makeStockExchangeComboBox(const QString& stockExchange) const;
+    QComboBox* makeSymbolComboBox(const TradingCatCommon::KLineID &klineId) const;
 
     void addFilterRow(const QString& stockExchange, double delta, double volume);
     void showRemovePushButton();
+
+    void addBlackListRow(const QString& stockExchange, const TradingCatCommon::KLineID &klineId);
+    void showRemoveBlackListPushButton();
 
     QColor stockExchangeColor(const TradingCatCommon::StockExchangeID& stockExchangeId);
 
@@ -122,6 +137,8 @@ private:
 
 private:
     Ui::MainWindow *ui;
+
+    EventListMenu* _eventListMenu = nullptr;     ///< контекстное меню списка событий
 
     LocalConfig _localCnf;
 
@@ -141,7 +158,7 @@ private:
 
     std::unique_ptr<NetworcCoreThread> _networkCore;
 
-    TradingCatCommon::StockExchangesIDList _stockExchengeIDList;
+    std::unordered_map<TradingCatCommon::StockExchangeID, TradingCatCommon::PKLinesIDList> _stockExchengeData;
 
     bool _login = false;
     TradingCatCommon::UserConfig _userConfig; //текущие настройки пользователя

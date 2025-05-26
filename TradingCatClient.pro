@@ -11,16 +11,19 @@ VERSION = 0.1
 HEADERS += \
     $$PWD/Src/localconfig.h \
     $$PWD/Src/mainwindow.h \
+    Src/eventlistmenu.h \
     Src/networkcore.h
 
 SOURCES += \
     $$PWD/Src/main.cpp \
     $$PWD/Src/localconfig.cpp \
     $$PWD/Src/mainwindow.cpp \
+    Src/eventlistmenu.cpp \
     Src/networkcore.cpp
 
 FORMS += \
-    $$PWD/Src/mainwindow.ui
+    $$PWD/Src/mainwindow.ui \
+    Src/eventlistmenu.ui
 
 RESOURCES += \
     $$PWD/Src/resurce.qrc

@@ -1,3 +1,7 @@
+//STL
+#include <vector>
+#include <algorithm>
+
 //Qt
 #include <QTimer>
 #include <QUrl>
@@ -10,6 +14,8 @@
 #include <QRandomGenerator64>
 #include <QClipboard>
 #include <QRegularExpression>
+#include <QMenu>
+#include <QDialog>
 
 //EM
 #include <emscripten/key_codes.h>
@@ -31,6 +37,7 @@ constexpr static const int MAX_ITEM_COUNT = 10000;
 constexpr static const qint64 LAST_DETECT_TIMEOUT = 1000 * 60 * 5; //5min
 
 Q_GLOBAL_STATIC_WITH_ARGS(const QString, STOCKEXCHANGE_NAME_ALL, ("ALL"));
+Q_GLOBAL_STATIC_WITH_ARGS(const QString, SYMBOL_NAME_ALL, ("ALL"));
 
 // static
 MainWindow::MainWindow(QWidget *parent /* = nullptr */)
@@ -70,6 +77,8 @@ MainWindow::MainWindow(QWidget *parent /* = nullptr */)
             SLOT(sendLogMsgNetworkCore(Common::TDBLoger::MSG_CODE, const QString&)), Qt::QueuedConnection);
     connect(&_networkCore->networkCore, SIGNAL(stockExchanges(const TradingCatCommon::StockExchangesIDList&)),
             SLOT(stockExchangesNetworkCore(const TradingCatCommon::StockExchangesIDList&)), Qt::QueuedConnection);
+    connect(&_networkCore->networkCore, SIGNAL(klinesIdList(const TradingCatCommon::StockExchangeID&, const TradingCatCommon::PKLinesIDList&)),
+            SLOT(klinesIdListNetworkCore(const TradingCatCommon::StockExchangeID&, const TradingCatCommon::PKLinesIDList&)), Qt::QueuedConnection);
 
     connect(this, SIGNAL(updateConfig(const TradingCatCommon::UserConfig&)),
             &_networkCore->networkCore, SLOT(updateConfig(const TradingCatCommon::UserConfig&)), Qt::QueuedConnection);
@@ -83,6 +92,9 @@ MainWindow::MainWindow(QWidget *parent /* = nullptr */)
     connect(ui->autoscrollCB, SIGNAL(checkStateChanged(Qt::CheckState)),
             SLOT(checkStateChangedAutoScrollCB(Qt::CheckState)));
 
+    ui->eventsList->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->eventsList, SIGNAL(customContextMenuRequested(const QPoint&)), SLOT(customContextMenuRequestedEventList(const QPoint&)));
+
     connect(ui->historyMaxPB, SIGNAL(clicked()), SLOT(historyMaxPBClicked()));
     connect(ui->history30minPB, SIGNAL(clicked()), SLOT(history30minPBClicked()));
     connect(ui->history1hourPB, SIGNAL(clicked()), SLOT(history1hourPBClicked()));
@@ -95,6 +107,8 @@ MainWindow::MainWindow(QWidget *parent /* = nullptr */)
 
     connect(ui->addPushButton, SIGNAL(clicked()), SLOT(addPushButtonClicked()));
     connect(ui->removePushButton, SIGNAL(clicked()), SLOT(removePushButtonClicked()));
+    connect(ui->addBlackListPushButton, SIGNAL(clicked()), SLOT(addBlackListPushButtonClicked()));
+    connect(ui->removeBlackListPushButton, SIGNAL(clicked()), SLOT(removeBlackListPushButtonClicked()));
 
     connect(ui->mainTabWidget, SIGNAL(currentChanged(int)), SLOT(mainTabWidgetCurrentChanged(int)));
 
@@ -108,8 +122,14 @@ MainWindow::MainWindow(QWidget *parent /* = nullptr */)
     makeChart();
     makeReviewChart();
 
+    _eventListMenu = new EventListMenu(this);
+    _eventListMenu->setVisible(false);
+
+    connect(_eventListMenu, SIGNAL(clickedItem(EventListMenu::EMenuItemType, quint64)),
+            SLOT(clickedItemEventListMenu(EventListMenu::EMenuItemType, quint64)));
+
     //start
-    QTimer::singleShot(100, this,
+    QTimer::singleShot(10, this,
                        [this]()
                        {
                            _reviewChartView->show();
@@ -134,6 +154,8 @@ MainWindow::~MainWindow()
 
     emit stopAll();
 
+    delete _eventListMenu;
+
     _networkCore->thread.wait();
 
     _networkCore.reset();
@@ -143,7 +165,7 @@ MainWindow::~MainWindow()
 
 bool MainWindow::keyPress(const EmscriptenKeyboardEvent *keyEvent)
 {
-    qDebug() << "User press key:" << keyEvent->key << "Code:" << keyEvent->keyCode;
+    // qDebug() << "User press key:" << keyEvent->key << "Code:" << keyEvent->keyCode;
 
     if (keyEvent->keyCode == DOM_VK_UP)
     {
@@ -282,6 +304,61 @@ void MainWindow::removePushButtonClicked()
     showRemovePushButton();
 }
 
+void MainWindow::addBlackListPushButtonClicked()
+{
+    addBlackListRow(QString(), KLineID());
+}
+
+void MainWindow::removeBlackListPushButtonClicked()
+{
+    auto& blackListTable = ui->blackListTableWidget;
+    blackListTable->removeRow(blackListTable->currentRow());
+
+    showRemoveBlackListPushButton();
+}
+
+void MainWindow::customContextMenuRequestedEventList(const QPoint &pos)
+{
+    Q_CHECK_PTR(_eventListMenu);
+
+    const auto& eventList = ui->eventsList;
+    const auto item = eventList->currentItem();
+    const auto data = item->data(INDEX_ROLE);
+    if (!data.isNull())
+    {
+        _eventListMenu->open(ui->eventsList->mapToGlobal(pos), data.toULongLong());
+    }
+}
+
+void MainWindow::clickedItemEventListMenu(EventListMenu::EMenuItemType type, quint64 index)
+{
+    //qDebug() << "Event list menu clicked" << static_cast<quint8>(type) << "Index" << index;
+
+    const auto it_getKLineDetectData = _getKLineDetectData.find(index);
+    if (it_getKLineDetectData == _getKLineDetectData.end())
+    {
+        return;
+    }
+
+    const auto& klineData = it_getKLineDetectData->second;
+    const auto& klineId = klineData->history->front()->id;
+    const auto& stockExchangeId = klineData->stockExchangeId;
+
+    switch (type)
+    {
+    case EventListMenu::EMenuItemType::ADD_BLACK_LIST:
+        addBlackListRow(stockExchangeId.name, klineId);
+        mainTabWidgetCurrentChanged(0);
+        break;
+    case EventListMenu::EMenuItemType::ADD_BLACK_LIST_ALL:
+        addBlackListRow(QString(), klineId);
+        mainTabWidgetCurrentChanged(0);
+        break;
+    default:
+        break;
+    }
+}
+
 void MainWindow::mainTabWidgetCurrentChanged(int index)
 {
     if (index != 0 || !_login)
@@ -290,20 +367,41 @@ void MainWindow::mainTabWidgetCurrentChanged(int index)
     }
 
     _userConfig.clearFilter();
-    for (int row = 0; row < ui->filterTableWidget->rowCount(); ++row)
+    const auto& filterTableWidget = ui->filterTableWidget;
+    for (int row = 0; row < filterTableWidget->rowCount(); ++row)
     {
         KLineFilterData tmp;
 
-        const auto stockExchangeName = static_cast<QComboBox*>(ui->filterTableWidget->cellWidget(row, 0))->currentText();
+        const auto stockExchangeName = static_cast<QComboBox*>(filterTableWidget->cellWidget(row, 0))->currentText();
         if (stockExchangeName != *STOCKEXCHANGE_NAME_ALL)
         {
             tmp.setStockExchangeID(StockExchangeID(stockExchangeName));
         }
 
-        tmp.setDelta(static_cast<QDoubleSpinBox*>(ui->filterTableWidget->cellWidget(row, 1))->value());
-        tmp.setVolume(static_cast<QDoubleSpinBox*>(ui->filterTableWidget->cellWidget(row, 2))->value());
+        tmp.setDelta(static_cast<QDoubleSpinBox*>(filterTableWidget->cellWidget(row, 1))->value());
+        tmp.setVolume(static_cast<QDoubleSpinBox*>(filterTableWidget->cellWidget(row, 2))->value());
 
         _userConfig.addFilterData(std::move(tmp));
+    }
+
+    const auto& blackListTabletWidget = ui->blackListTableWidget;
+    for (int row = 0; row < blackListTabletWidget->rowCount(); ++row)
+    {
+        BlackListFilterData tmp;
+
+        const auto stockExchangeName = static_cast<QComboBox*>(blackListTabletWidget->cellWidget(row, 0))->currentText();
+        if (stockExchangeName != *STOCKEXCHANGE_NAME_ALL)
+        {
+            tmp.setStockExchangeID(StockExchangeID(stockExchangeName));
+        }
+
+        const auto symbol = static_cast<QComboBox*>(blackListTabletWidget->cellWidget(row, 1))->currentData().toString();
+        if (symbol != *SYMBOL_NAME_ALL)
+        {
+            tmp.setKLineID(KLineID(symbol, KLineType::MIN1));
+        }
+
+        _userConfig.addBlackListData(std::move(tmp));
     }
 
     emit updateConfig(_userConfig);
@@ -498,6 +596,8 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
+    Q_CHECK_PTR(_eventListMenu);
+
     if (event->type() == QEvent::MouseButtonDblClick)
     {
         const auto& eventList = ui->eventsList;
@@ -517,6 +617,14 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
         }
     }
 
+    if (event->type() == QEvent::MouseButtonPress)
+    {
+        if (!_eventListMenu->isHidden())
+        {
+            QTimer::singleShot(10, this, [this](){ _eventListMenu->close(); });
+        }
+    }
+
     // pass the event on to the parent class
     return QMainWindow::eventFilter(watched, event);
 }
@@ -524,15 +632,6 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 void MainWindow::loginNetworkCore(const TradingCatCommon::UserConfig &userConfig)
 {
     _userConfig = userConfig;
-
-    auto item = new QListWidgetItem(QString("Login successfully as: %1").arg(_localCnf.user()));
-    item->setIcon(QIcon(":/image/img/ok.png"));
-    item->setFlags(Qt::ItemFlag::ItemIsEnabled);
-    ui->eventsList->addItem(item);
-
-    _login = true;
-
-    makeFilterTab();
 }
 
 void MainWindow::logoutNetworkCore()
@@ -543,6 +642,9 @@ void MainWindow::logoutNetworkCore()
     ui->eventsList->addItem(item);
 
     clearFilterTab();
+    clearBlackListTab();
+
+    _stockExchengeData.clear();
 
     _login = false;  
 }
@@ -574,11 +676,47 @@ void MainWindow::klineDetectNetworkCore(const TradingCatCommon::Detector::KLines
     }
 }
 
-void MainWindow::stockExchangesNetworkCore(const TradingCatCommon::StockExchangesIDList &stockExchangesIdList)
+void MainWindow::stockExchangesNetworkCore(const TradingCatCommon::StockExchangesIDList& stockExchangesIdList)
 {
-    _stockExchengeIDList = stockExchangesIdList;
+    _stockExchengeData.clear();
+    for (const auto& stockExchnageId: stockExchangesIdList)
+    {
+        _stockExchengeData.emplace(stockExchnageId, std::make_shared<TradingCatCommon::KLinesIDList>());
+    }
 
-    makeFilterTab();
+    //далее ждем данных о доступных свечах
+}
+
+void MainWindow::klinesIdListNetworkCore(const TradingCatCommon::StockExchangeID &stockExchangesId, const TradingCatCommon::PKLinesIDList &klinesIdList)
+{
+    Q_ASSERT(_stockExchengeData.contains(stockExchangesId));
+    Q_CHECK_PTR(klinesIdList);
+
+    _stockExchengeData.at(stockExchangesId) = klinesIdList;
+
+    qDebug() << "Add stockExhange" << stockExchangesId.toString() << klinesIdList->size();
+    // выполняем логин, как только данные по всем биржам получены
+    if (!_login)
+    {
+        const auto& isAll = std::all_of(_stockExchengeData.begin(), _stockExchengeData.end(),
+                                        [](const auto& item)
+                                        {
+                                            return !item.second->empty();
+                                        });
+
+        if (isAll)
+        {
+            auto item = new QListWidgetItem(QString("Login successfully as: %1").arg(_localCnf.user()));
+            item->setIcon(QIcon(":/image/img/ok.png"));
+            item->setFlags(Qt::ItemFlag::ItemIsEnabled);
+            ui->eventsList->addItem(item);
+
+            _login = true;
+
+            makeFilterTab();
+            makeBlackListTab();
+        }
+    }
 }
 
 void MainWindow::sendLogMsgNetworkCore(Common::TDBLoger::MSG_CODE category, const QString &msg)
@@ -591,8 +729,12 @@ void MainWindow::sendLogMsg(TDBLoger::MSG_CODE category, const QString &msg)
     switch (category)
     {
     case TDBLoger::MSG_CODE::DEBUG_CODE:
+#ifdef QT_DEBUG
         qDebug() << msg;
         break;
+#else
+        return;
+#endif
     case TDBLoger::MSG_CODE::INFORMATION_CODE:
         qInfo() << msg;
         break;
@@ -937,13 +1079,14 @@ QComboBox* MainWindow::makeStockExchangeComboBox(const QString &stockExchange) c
 {
     auto stockExchangeComboBox = new QComboBox();
     stockExchangeComboBox->setEditable(false);
+    stockExchangeComboBox->view()->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 
     stockExchangeComboBox->addItem(*STOCKEXCHANGE_NAME_ALL);
 
     QStringList stockExchangeNames;
-    for (const auto& stockExchangeId: _stockExchengeIDList)
+    for (const auto& stockExchangeData: _stockExchengeData)
     {
-        stockExchangeNames.push_back(stockExchangeId.name);
+        stockExchangeNames.push_back(stockExchangeData.first.name);
     }
     stockExchangeNames.sort();
 
@@ -957,31 +1100,85 @@ QComboBox* MainWindow::makeStockExchangeComboBox(const QString &stockExchange) c
     return stockExchangeComboBox;
 }
 
-void MainWindow::makeFilterTab()
+QComboBox *MainWindow::makeSymbolComboBox(const TradingCatCommon::KLineID &klineId) const
 {
-    ui->filterTableWidget->clear();
-    ui->filterTableWidget->setRowCount(0);
+    auto symbolComboBox = new QComboBox();
+    symbolComboBox->setEditable(false);
 
-    ui->filterTableWidget->setColumnCount(3);
-    QStringList headersLabel;
-    headersLabel << "Stock exchange" << "Delta" << "Volume";
-    ui->filterTableWidget->setHorizontalHeaderLabels(headersLabel);
-    ui->filterTableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    ui->filterTableWidget->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-    ui->filterTableWidget->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    symbolComboBox->addItem(*SYMBOL_NAME_ALL, QVariant(*SYMBOL_NAME_ALL));
 
-    for (const auto& filterData: _userConfig.filter().klineFilter())
+    std::vector<KLineID> klinesIdList;
+    if (!klineId.isEmpty())
     {
-        const auto o_currentStockExcangeName = filterData.stockExchangeID();
-        const auto currentStockExcangeName = o_currentStockExcangeName.has_value() && !o_currentStockExcangeName.value().isEmpty() ? o_currentStockExcangeName.value().name : *STOCKEXCHANGE_NAME_ALL;
-
-        const auto o_currentDelta = filterData.delta();
-        const auto o_currentVolume = filterData.volume();
-
-        addFilterRow(currentStockExcangeName, o_currentDelta.value_or(KLineFilterData::MinDelta), o_currentVolume.value_or(KLineFilterData::MinVolume));
+        klinesIdList.push_back(klineId);
     }
 
-    ui->addPushButton->setEnabled(true);
+    for(const auto& stockExchengeData: _stockExchengeData)
+    {
+        for (const auto& klineIdInStock: *stockExchengeData.second)
+        {
+            if (klineIdInStock.type == TradingCatCommon::KLineType::MIN1)
+            {
+                klinesIdList.push_back(klineIdInStock);
+            }
+        }
+    }
+
+    std::sort(klinesIdList.begin(), klinesIdList.end(),
+              [](const auto& klineIdLeft, const auto& klineIdRight)
+              {
+                  return klineIdLeft.symbol < klineIdRight.symbol;
+              });
+
+    klinesIdList.erase(std::unique(klinesIdList.begin(), klinesIdList.end()), klinesIdList.end());
+
+    for (const auto& klineIdInStock: klinesIdList)
+    {
+        symbolComboBox->addItem(klineIdInStock.baseName(), QVariant(klineIdInStock.symbol));
+    }
+
+    if (!klineId.isEmpty())
+    {
+        symbolComboBox->setCurrentText(klineId.baseName());
+    }
+    else
+    {
+        symbolComboBox->setCurrentText(*SYMBOL_NAME_ALL);
+    }
+
+    return symbolComboBox;
+}
+
+void MainWindow::makeFilterTab()
+{
+    //Filter
+    {
+        auto& filterTableWidget = ui->filterTableWidget;
+        filterTableWidget->clear();
+        filterTableWidget->setRowCount(0);
+
+        filterTableWidget->setColumnCount(4);
+        QStringList headersLabel;
+        headersLabel << "  Stock exchange  " << "  Delta  " << "  Volume  " << "";
+        filterTableWidget->setHorizontalHeaderLabels(headersLabel);
+        filterTableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+        filterTableWidget->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+        filterTableWidget->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+        filterTableWidget->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+
+        for (const auto& filterData: _userConfig.filter().klineFilter())
+        {
+            const auto o_currentStockExcangeName = filterData.stockExchangeID();
+            const auto currentStockExcangeName = o_currentStockExcangeName.has_value() && !o_currentStockExcangeName.value().isEmpty() ? o_currentStockExcangeName.value().name : *STOCKEXCHANGE_NAME_ALL;
+
+            const auto o_currentDelta = filterData.delta();
+            const auto o_currentVolume = filterData.volume();
+
+            addFilterRow(currentStockExcangeName, o_currentDelta.value_or(KLineFilterData::MinDelta), o_currentVolume.value_or(KLineFilterData::MinVolume));
+        }
+
+        ui->addPushButton->setEnabled(true);
+    }
 }
 
 void MainWindow::clearFilterTab()
@@ -991,6 +1188,46 @@ void MainWindow::clearFilterTab()
 
     ui->addPushButton->setEnabled(false);
     ui->removePushButton->setEnabled(false);
+}
+
+void MainWindow::makeBlackListTab()
+{
+    //black list
+    {
+        auto& blackListTableWidget = ui->blackListTableWidget;
+        blackListTableWidget->clear();
+        blackListTableWidget->setRowCount(0);
+
+        blackListTableWidget->setColumnCount(3);
+        QStringList headersLabel;
+        headersLabel << "  Stock exchange  " << "  Symbol  " << "";
+        blackListTableWidget->setHorizontalHeaderLabels(headersLabel);
+        blackListTableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+        blackListTableWidget->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+        blackListTableWidget->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+
+        for (const auto& blackListData: _userConfig.filter().blackList())
+        {
+            const auto o_currentStockExcangeName = blackListData.stockExchangeID();
+            const auto currentStockExcangeName = o_currentStockExcangeName.has_value() && !o_currentStockExcangeName.value().isEmpty() ? o_currentStockExcangeName.value().name : *STOCKEXCHANGE_NAME_ALL;
+
+            const auto o_currentKLineID = blackListData.klineID();
+            const auto currentKLineID = o_currentKLineID.has_value() && !o_currentKLineID.value().isEmpty() ? o_currentKLineID.value() : KLineID();
+
+            addBlackListRow(currentStockExcangeName, currentKLineID);
+        }
+
+        ui->addBlackListPushButton->setEnabled(true);
+    }
+}
+
+void MainWindow::clearBlackListTab()
+{
+    ui->blackListTableWidget->clear();
+    ui->blackListTableWidget->setRowCount(0);
+
+    ui->addBlackListPushButton->setEnabled(false);
+    ui->removeBlackListPushButton->setEnabled(false);
 }
 
 void MainWindow::addFilterRow(const QString &stockExchange, double delta, double volume)
@@ -1009,11 +1246,19 @@ void MainWindow::addFilterRow(const QString &stockExchange, double delta, double
     volumeSpinBox->setValue(volume);
     volumeSpinBox->setSpecialValueText("MINIMUM");
 
-    ui->filterTableWidget->insertRow(ui->filterTableWidget->rowCount());
-    const auto currentRow = ui->filterTableWidget->rowCount() - 1;
-    ui->filterTableWidget->setCellWidget(currentRow, 0, makeStockExchangeComboBox(stockExchange));
-    ui->filterTableWidget->setCellWidget(currentRow, 1, deltaSpinBox);
-    ui->filterTableWidget->setCellWidget(currentRow, 2, volumeSpinBox);
+    auto filterTableWidget = ui->filterTableWidget;
+
+    auto removeButton = new QPushButton(QIcon(":/image/img/remove2.png"), "", filterTableWidget);
+    removeButton->setMaximumSize(QSize(34, 34));
+
+    connect(removeButton, SIGNAL(clicked()), SLOT(removePushButtonClicked()));
+
+    filterTableWidget->insertRow(filterTableWidget->rowCount());
+    const auto currentRow = filterTableWidget->rowCount() - 1;
+    filterTableWidget->setCellWidget(currentRow, 0, makeStockExchangeComboBox(stockExchange));
+    filterTableWidget->setCellWidget(currentRow, 1, deltaSpinBox);
+    filterTableWidget->setCellWidget(currentRow, 2, volumeSpinBox);
+    filterTableWidget->setCellWidget(currentRow, 3, removeButton);
 
     showRemovePushButton();
 }
@@ -1021,6 +1266,31 @@ void MainWindow::addFilterRow(const QString &stockExchange, double delta, double
 void MainWindow::showRemovePushButton()
 {
     ui->removePushButton->setEnabled(ui->filterTableWidget->rowCount() != 0);
+}
+
+void MainWindow::addBlackListRow(const QString& stockExchange, const TradingCatCommon::KLineID &klineId)
+{
+    Q_ASSERT(ui->blackListTableWidget->columnCount() == 3);
+
+    auto& blackListTableWidget = ui->blackListTableWidget;
+
+    auto removeButton = new QPushButton(QIcon(":/image/img/remove2.png"), "", blackListTableWidget);
+    removeButton->setMaximumSize(QSize(34, 34));
+
+    connect(removeButton, SIGNAL(clicked()), SLOT(removeBlackListPushButtonClicked()));
+
+    blackListTableWidget->insertRow(blackListTableWidget->rowCount());
+    const auto currentRow = blackListTableWidget->rowCount() - 1;
+    blackListTableWidget->setCellWidget(currentRow, 0, makeStockExchangeComboBox(stockExchange));
+    blackListTableWidget->setCellWidget(currentRow, 1, makeSymbolComboBox(klineId));
+    blackListTableWidget->setCellWidget(currentRow, 2, removeButton);
+
+    showRemoveBlackListPushButton();
+}
+
+void MainWindow::showRemoveBlackListPushButton()
+{
+    ui->removeBlackListPushButton->setEnabled(ui->blackListTableWidget->rowCount() != 0);
 }
 
 QColor MainWindow::stockExchangeColor(const TradingCatCommon::StockExchangeID &stockExchangeId)
@@ -1095,6 +1365,8 @@ QColor MainWindow::stockExchangeColor(const TradingCatCommon::StockExchangeID &s
 
 bool MainWindow::isLastDetected(const TradingCatCommon::StockExchangeID &stockExchangeId, const TradingCatCommon::KLineID &klineId, qint64 time)
 {
+    Q_UNUSED(stockExchangeId);
+
     const auto hash = std::hash<QString>()(klineId.baseName());  //+ 49831 * std::hash<TradingCatCommon::StockExchangeID>()(stockExchangeId);
     const auto it_lastDetected = _lastDetected.find(hash);
     if (it_lastDetected == _lastDetected.end())

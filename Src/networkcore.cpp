@@ -22,6 +22,8 @@ NetworkCore::NetworkCore(const LocalConfig &cfg)
     : _cfg(cfg)
 {
     qRegisterMetaType<TradingCatCommon::UserConfig>("TradingCatCommon::UserConfig");
+    qRegisterMetaType<TradingCatCommon::PKLinesIDList>("TradingCatCommon::PKLinesIDList");
+    qRegisterMetaType<TradingCatCommon::StockExchangeID>("TradingCatCommon::StockExchangeID");
 }
 
 NetworkCore::~NetworkCore()
@@ -38,8 +40,8 @@ void NetworkCore::start()
     connect(_http.get(), SIGNAL(getAnswer(const QByteArray&, quint64)),
             SLOT(getAnswerHttp(const QByteArray&, quint64)));
 
-    connect(_http.get(), SIGNAL(errorOccurred(QNetworkReply::NetworkError, quint64, const QString&, quint64)),
-            SLOT(errorOccurredHttp(QNetworkReply::NetworkError, quint64, const QString&, quint64)));
+    connect(_http.get(), SIGNAL(errorOccurred(QNetworkReply::NetworkError, quint64, const QString&, quint64, const QByteArray&)),
+            SLOT(errorOccurredHttp(QNetworkReply::NetworkError, quint64, const QString&, quint64, const QByteArray&)));
 
     connect(_http.get(), SIGNAL(sendLogMsg(Common::TDBLoger::MSG_CODE, const QString&, quint64)),
             SLOT(sendLogMsgHttp(Common::TDBLoger::MSG_CODE, const QString&, quint64)));
@@ -60,7 +62,7 @@ void NetworkCore::stop()
 
     _http.reset();
 
-    emit finished();;
+    emit finished();
 }
 
 void NetworkCore::updateConfig(const TradingCatCommon::UserConfig &config)
@@ -99,7 +101,23 @@ void NetworkCore::getAnswerHttp(const QByteArray& answer, quint64 id)
         res = parseStockExchanges(answer);
         if (res)
         {
-            sendDetect();
+            sendKLinesIdList();
+        }
+        break;
+    }
+    case PackageType::KLINESIDLIST:
+    {
+        res = parseKLinesIdList(answer);
+        if (res)
+        {
+            if (!_unGetKLinesId.empty())
+            {
+                sendKLinesIdList();
+            }
+            else
+            {
+                sendDetect();
+            }
         }
         break;
     }
@@ -143,18 +161,20 @@ void NetworkCore::getAnswerHttp(const QByteArray& answer, quint64 id)
     }
 }
 
-void NetworkCore::errorOccurredHttp(QNetworkReply::NetworkError code, quint64 serverCode, const QString& msg, quint64 id)
+void NetworkCore::errorOccurredHttp(QNetworkReply::NetworkError code, quint64 serverCode, const QString& msg, quint64 id, const QByteArray& answer)
 {
     Q_UNUSED(code);
     Q_UNUSED(serverCode);
 
-    emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("Error send request to http server: Request ID: %1: %2").arg(id).arg(msg));
+    emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("Error send request to http server: Request ID: %1: %2 Data: %3")
+                                                          .arg(id)
+                                                          .arg(msg)
+                                                          .arg(answer));
 
     const auto it_sentQuery = _sentQuery.find(id);
-
     if (it_sentQuery == _sentQuery.end())
     {
-        qWarning() << QString("Get answer from unknow query ID: %1").arg(id);
+        qWarning() << QString("Get answer from unknow query ID: %1 Data: %2").arg(id).arg(answer);
 
         return;
     }
@@ -174,10 +194,12 @@ void NetworkCore::errorOccurredHttp(QNetworkReply::NetworkError code, quint64 se
     }
     case PackageType::LOGOUT:
     case PackageType::STOCKEXCHANGES:
+    case PackageType::KLINESIDLIST:
     case PackageType::CONFIG:
     case PackageType::DETECT:
     {
         _sessionId = 0;
+        _unGetKLinesId.clear();
 
         emit logout();
 
@@ -221,6 +243,7 @@ void NetworkCore::sendHTTPRequest(TradingCatCommon::Query* query)
 void NetworkCore::sendLogin()
 {
     _sessionId = 0;
+    _unGetKLinesId.clear();
 
     const auto& user = _cfg.user();
     const auto& password = _cfg.password();
@@ -235,7 +258,24 @@ void NetworkCore::sendLogin()
 
 void NetworkCore::sendStockExchanges()
 {
+    if (_sessionId == 0) //logout
+    {
+        return;
+    }
+
     auto query =  new StockExchangesQuery(_sessionId);
+
+    sendHTTPRequest(query);
+}
+
+void NetworkCore::sendKLinesIdList()
+{
+    if (_sessionId == 0 || _unGetKLinesId.empty()) //logout
+    {
+        return;
+    }
+
+    auto query =  new KLinesIDListQuery(_sessionId, *_unGetKLinesId.begin());
 
     sendHTTPRequest(query);
 }
@@ -250,7 +290,11 @@ void NetworkCore::sendLogout()
 void NetworkCore::sendConfig(const TradingCatCommon::UserConfig &config)
 {
     Q_ASSERT(!config.isError());
-    Q_ASSERT(_sessionId != 0);
+
+    if (_sessionId == 0) //logout
+    {
+        return;
+    }
 
     auto query = new ConfigQuery(_sessionId, config);
 
@@ -259,6 +303,11 @@ void NetworkCore::sendConfig(const TradingCatCommon::UserConfig &config)
 
 void NetworkCore::sendDetect()
 {
+    if (_sessionId == 0) //logout
+    {
+        return;
+    }
+
     auto query = new DetectQuery(_sessionId);
 
     sendHTTPRequest(query);
@@ -331,11 +380,11 @@ bool NetworkCore::parseStockExchanges(const QByteArray &answer)
         return false;
     }
 
-    const auto& stockExchangeIDList = data.stockExchangeIdList();
+    _unGetKLinesId = data.stockExchangeIdList();
 
-    emit stockExchanges(stockExchangeIDList);
+    emit stockExchanges(_unGetKLinesId);
 
-    if (!stockExchangeIDList.empty())
+    if (!_unGetKLinesId.empty())
     {
         emit sendLogMsg(TDBLoger::MSG_CODE::INFORMATION_CODE, QString("StockExchanges: Successfully. Server message: %1").arg(data.message()));
     }
@@ -344,6 +393,62 @@ bool NetworkCore::parseStockExchanges(const QByteArray &answer)
         emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("StockExchanges: Successfully. StockExchange ID list is empty. Server message: %1").arg(data.message()));
     }
 
+    return true;
+}
+
+bool NetworkCore::parseKLinesIdList(const QByteArray &answer)
+{
+    Q_ASSERT(!_unGetKLinesId.empty());
+
+    TradingCatCommon::Package<KLinesIDListAnswer> package(answer);
+
+    if (package.isError())
+    {
+        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("KLinesIDList: Error parsing package: %1").arg(package.errorString()));
+
+        return false;
+    }
+
+    const auto& status= package.status();
+    if (status.code() != StatusAnswer::ErrorCode::OK)
+    {
+        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("KLinesIDList: Server answer with error. Code: %1. Error: %2")
+                            .arg(StatusAnswer::errorCodeToStr(status.code()))
+                            .arg(status.message()));
+
+        return false;
+    }
+
+    const auto& data = package.data();
+    if (data.isError())
+    {
+        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("KLinesIDList: Error parsing data: %1").arg(data.errorString()));
+
+        return false;
+    }
+
+    const auto& klinesId = data.klinesIdList();
+    const auto& stockExchangeID = data.stockExchangeId();
+
+    const auto it_unGetKLinesId =  _unGetKLinesId.find(stockExchangeID);
+    if (it_unGetKLinesId == _unGetKLinesId.end())
+    {
+        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("KLinesIDList: Undefine stock exchange: %1").arg(stockExchangeID.toString()));
+
+        return false;
+    }
+    _unGetKLinesId.erase(it_unGetKLinesId);
+
+    emit klinesIdList(stockExchangeID, klinesId);
+
+    if (!klinesId->empty())
+    {
+        emit sendLogMsg(TDBLoger::MSG_CODE::INFORMATION_CODE, QString("KLinesIDList: Successfully. Server message: %1").arg(data.message()));
+    }
+    else
+    {
+        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("KLinesIDList: Successfully. KLines ID list is empty. Server message: %1").arg(data.message()));
+    }
 
     return true;
 }
