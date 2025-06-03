@@ -766,7 +766,7 @@ void MainWindow::showChart(const TradingCatCommon::PKLinesList &klinesData, cons
 
     _chartView->chart()->setTitle(QString("%1: %2 %3")
                                       .arg(stockExchangeID.name)
-                                      .arg(klineId.symbol)
+                                      .arg(klineId.symbol.name)
                                       .arg(KLineTypeToString(klineId.type)));
 
     float max = std::numeric_limits<float>::min();
@@ -859,7 +859,7 @@ void MainWindow::showReviewChart(const TradingCatCommon::PKLinesList &klinesData
     const auto& klineId = firstKLine->id;
 
     _reviewChartView->chart()->setTitle(QString("%2 %3")
-                                            .arg(klineId.symbol)
+                                            .arg(klineId.symbol.name)
                                             .arg(KLineTypeToString(klineId.type)));
 
     float max = std::numeric_limits<float>::min();
@@ -951,7 +951,7 @@ QListWidgetItem* MainWindow::addDetectToEventList(const TradingCatCommon::Detect
 
     const QString text = QString("%1->%2 Delta=%3 Volume=%4")
                              .arg(detectData->stockExchangeId.toString())
-                             .arg(kline->id.symbol)
+                             .arg(kline->id.symbol.name)
                              .arg(detectData->delta)
                              .arg(detectData->volume);
 
@@ -963,7 +963,7 @@ QListWidgetItem* MainWindow::addDetectToEventList(const TradingCatCommon::Detect
     static quint64 lastIDKLine = 0;
 
     item->setData(INDEX_ROLE, ++lastIDKLine);
-    item->setData(KLINE_NAME_ROLE, kline->id.symbol);
+    item->setData(KLINE_NAME_ROLE, kline->id.symbol.name);
     _getKLineDetectData.emplace(lastIDKLine, detectData);
 
     item->setForeground(stockExchangeColor(detectData->stockExchangeId));
@@ -1127,14 +1127,14 @@ QComboBox *MainWindow::makeSymbolComboBox(const TradingCatCommon::KLineID &kline
     std::sort(klinesIdList.begin(), klinesIdList.end(),
               [](const auto& klineIdLeft, const auto& klineIdRight)
               {
-                  return klineIdLeft.symbol < klineIdRight.symbol;
+                  return klineIdLeft.symbol.name < klineIdRight.symbol.name;
               });
 
     klinesIdList.erase(std::unique(klinesIdList.begin(), klinesIdList.end()), klinesIdList.end());
 
     for (const auto& klineIdInStock: klinesIdList)
     {
-        symbolComboBox->addItem(klineIdInStock.baseName(), QVariant(klineIdInStock.symbol));
+        symbolComboBox->addItem(klineIdInStock.baseName(), QVariant(klineIdInStock.symbol.name));
     }
 
     if (!klineId.isEmpty())
@@ -1313,6 +1313,10 @@ QColor MainWindow::stockExchangeColor(const TradingCatCommon::StockExchangeID &s
     else if (stockExchangeName == "BYBIT")
     {
         return QColor(97, 53, 131); //фиолетовый
+    }
+    else if (stockExchangeName == "BITMART")
+    {
+        return QColor(47, 93, 200); //синий
     }
     else if (stockExchangeName == "BINANCE")
     {
