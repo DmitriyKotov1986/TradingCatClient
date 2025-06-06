@@ -692,7 +692,17 @@ void MainWindow::klinesIdListNetworkCore(const TradingCatCommon::StockExchangeID
     Q_ASSERT(_stockExchengeData.contains(stockExchangesId));
     Q_CHECK_PTR(klinesIdList);
 
-    _stockExchengeData.at(stockExchangesId) = klinesIdList;
+    auto it_stockExchengeData = _stockExchengeData.find(stockExchangesId);
+    if (!klinesIdList->empty())
+    {
+        it_stockExchengeData->second = klinesIdList;
+    }
+    else
+    {
+        auto tmp = std::make_shared<TradingCatCommon::KLinesIDList>();
+        tmp->emplace(TradingCatCommon::KLineID(Symbol("BTCUSDT"), KLineType::MIN1));
+        it_stockExchengeData->second = tmp;
+    }
 
     qDebug() << "Add stockExhange" << stockExchangesId.toString() << klinesIdList->size();
     // выполняем логин, как только данные по всем биржам получены
