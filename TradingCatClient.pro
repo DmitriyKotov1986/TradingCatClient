@@ -1,4 +1,4 @@
-QT = core network gui charts sql
+QT = core network gui charts
 
 TARGET = TradingCatClient
 TEMPLATE = app

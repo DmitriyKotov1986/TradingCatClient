@@ -45,7 +45,7 @@ signals:
         @param category - категория сообщения
         @param msg - текст сообщения
     */
-    void sendLogMsg(Common::TDBLoger::MSG_CODE category, const QString& msg);
+    void sendLogMsg(Common::MSG_CODE category, const QString& msg);
 
     void finished();
 
@@ -72,7 +72,7 @@ private slots:
         @param msg - текст сообщения
         @param id -ИД запроса
     */
-    void sendLogMsgHttp(Common::TDBLoger::MSG_CODE category, const QString& msg, quint64 id);
+    void sendLogMsgHttp(Common::MSG_CODE category, const QString& msg, quint64 id);
 
 private:
     NetworkCore() = delete;

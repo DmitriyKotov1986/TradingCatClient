@@ -68,7 +68,7 @@ private slots:
         @param category - категория сообщения
         @param msg - текст сообщения
     */
-    void sendLogMsgNetworkCore(Common::TDBLoger::MSG_CODE category, const QString& msg);
+    void sendLogMsgNetworkCore(Common::MSG_CODE category, const QString& msg);
 
     //UI
     void mainTabWidgetCurrentChanged(int index);
@@ -110,7 +110,7 @@ private:
     void makeBlackListTab();
     void clearBlackListTab();
 
-    void sendLogMsg(Common::TDBLoger::MSG_CODE category, const QString& msg);
+    void sendLogMsg(Common::MSG_CODE category, const QString& msg);
 
     void showChart(const TradingCatCommon::PKLinesList& klinesData, const TradingCatCommon::StockExchangeID& stockExchangeID);
     void showReviewChart(const TradingCatCommon::PKLinesList& klinesData, const TradingCatCommon::StockExchangeID& stockExchangeID);

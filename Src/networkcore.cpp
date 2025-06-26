@@ -43,8 +43,8 @@ void NetworkCore::start()
     connect(_http.get(), SIGNAL(errorOccurred(QNetworkReply::NetworkError, quint64, const QString&, quint64, const QByteArray&)),
             SLOT(errorOccurredHttp(QNetworkReply::NetworkError, quint64, const QString&, quint64, const QByteArray&)));
 
-    connect(_http.get(), SIGNAL(sendLogMsg(Common::TDBLoger::MSG_CODE, const QString&, quint64)),
-            SLOT(sendLogMsgHttp(Common::TDBLoger::MSG_CODE, const QString&, quint64)));
+    connect(_http.get(), SIGNAL(sendLogMsg(Common::MSG_CODE, const QString&, quint64)),
+            SLOT(sendLogMsgHttp(Common::MSG_CODE, const QString&, quint64)));
 
     _isStarted = true;
 
@@ -166,7 +166,7 @@ void NetworkCore::errorOccurredHttp(QNetworkReply::NetworkError code, quint64 se
     Q_UNUSED(code);
     Q_UNUSED(serverCode);
 
-    emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("Error send request to http server: Request ID: %1: %2 Data: %3")
+    emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("Error send request to http server: Request ID: %1: %2 Data: %3")
                                                           .arg(id)
                                                           .arg(msg)
                                                           .arg(answer));
@@ -212,7 +212,7 @@ void NetworkCore::errorOccurredHttp(QNetworkReply::NetworkError code, quint64 se
     }
 }
 
-void NetworkCore::sendLogMsgHttp(Common::TDBLoger::MSG_CODE category, const QString &msg, quint64 id)
+void NetworkCore::sendLogMsgHttp(Common::MSG_CODE category, const QString &msg, quint64 id)
 {
     emit sendLogMsg(category, QString("Request ID: %1: %2").arg(id).arg(msg));
 }
@@ -319,7 +319,7 @@ bool NetworkCore::parseLogin(const QByteArray &answer)
 
     if (package.isError())
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("Login: Error parsing package: %1").arg(package.errorString()));
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("Login: Error parsing package: %1").arg(package.errorString()));
 
         return false;
     }
@@ -327,7 +327,7 @@ bool NetworkCore::parseLogin(const QByteArray &answer)
     const auto& status= package.status();
     if (status.code() != StatusAnswer::ErrorCode::OK)
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("Login: Server answer with error. Code: %1. Error: %2")
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("Login: Server answer with error. Code: %1. Error: %2")
                                                               .arg(StatusAnswer::errorCodeToStr(status.code()))
                                                               .arg(status.message()));
 
@@ -337,7 +337,7 @@ bool NetworkCore::parseLogin(const QByteArray &answer)
     const auto& data = package.data();
     if (data.isError())
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("Login: Error parsing data: %1").arg(data.errorString()));
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("Login: Error parsing data: %1").arg(data.errorString()));
 
         return false;
     }
@@ -346,7 +346,7 @@ bool NetworkCore::parseLogin(const QByteArray &answer)
 
     emit login(data.config());
 
-    emit sendLogMsg(TDBLoger::MSG_CODE::INFORMATION_CODE, QString("Login: Successfully. Server message: %1").arg(data.message()));
+    emit sendLogMsg(MSG_CODE::INFORMATION_CODE, QString("Login: Successfully. Server message: %1").arg(data.message()));
 
     return true;
 }
@@ -357,7 +357,7 @@ bool NetworkCore::parseStockExchanges(const QByteArray &answer)
 
     if (package.isError())
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("StockExchanges: Error parsing package: %1").arg(package.errorString()));
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("StockExchanges: Error parsing package: %1").arg(package.errorString()));
 
         return false;
     }
@@ -365,7 +365,7 @@ bool NetworkCore::parseStockExchanges(const QByteArray &answer)
     const auto& status= package.status();
     if (status.code() != StatusAnswer::ErrorCode::OK)
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("StockExchanges: Server answer with error. Code: %1. Error: %2")
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("StockExchanges: Server answer with error. Code: %1. Error: %2")
                                                               .arg(StatusAnswer::errorCodeToStr(status.code()))
                                                               .arg(status.message()));
 
@@ -375,7 +375,7 @@ bool NetworkCore::parseStockExchanges(const QByteArray &answer)
     const auto& data = package.data();
     if (data.isError())
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("StockExchanges: Error parsing data: %1").arg(data.errorString()));
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("StockExchanges: Error parsing data: %1").arg(data.errorString()));
 
         return false;
     }
@@ -386,11 +386,11 @@ bool NetworkCore::parseStockExchanges(const QByteArray &answer)
 
     if (!_unGetKLinesId.empty())
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::INFORMATION_CODE, QString("StockExchanges: Successfully. Server message: %1").arg(data.message()));
+        emit sendLogMsg(MSG_CODE::INFORMATION_CODE, QString("StockExchanges: Successfully. Server message: %1").arg(data.message()));
     }
     else
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("StockExchanges: Successfully. StockExchange ID list is empty. Server message: %1").arg(data.message()));
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("StockExchanges: Successfully. StockExchange ID list is empty. Server message: %1").arg(data.message()));
     }
 
     return true;
@@ -404,7 +404,7 @@ bool NetworkCore::parseKLinesIdList(const QByteArray &answer)
 
     if (package.isError())
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("KLinesIDList: Error parsing package: %1").arg(package.errorString()));
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("KLinesIDList: Error parsing package: %1").arg(package.errorString()));
 
         return false;
     }
@@ -412,7 +412,7 @@ bool NetworkCore::parseKLinesIdList(const QByteArray &answer)
     const auto& status= package.status();
     if (status.code() != StatusAnswer::ErrorCode::OK)
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("KLinesIDList: Server answer with error. Code: %1. Error: %2")
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("KLinesIDList: Server answer with error. Code: %1. Error: %2")
                             .arg(StatusAnswer::errorCodeToStr(status.code()))
                             .arg(status.message()));
 
@@ -422,7 +422,7 @@ bool NetworkCore::parseKLinesIdList(const QByteArray &answer)
     const auto& data = package.data();
     if (data.isError())
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("KLinesIDList: Error parsing data: %1").arg(data.errorString()));
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("KLinesIDList: Error parsing data: %1").arg(data.errorString()));
 
         return false;
     }
@@ -433,7 +433,7 @@ bool NetworkCore::parseKLinesIdList(const QByteArray &answer)
     const auto it_unGetKLinesId =  _unGetKLinesId.find(stockExchangeID);
     if (it_unGetKLinesId == _unGetKLinesId.end())
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("KLinesIDList: Undefine stock exchange: %1").arg(stockExchangeID.toString()));
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("KLinesIDList: Undefine stock exchange: %1").arg(stockExchangeID.toString()));
 
         return false;
     }
@@ -443,11 +443,11 @@ bool NetworkCore::parseKLinesIdList(const QByteArray &answer)
 
     if (!klinesId->empty())
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::INFORMATION_CODE, QString("KLinesIDList: Successfully. Server message: %1").arg(data.message()));
+        emit sendLogMsg(MSG_CODE::INFORMATION_CODE, QString("KLinesIDList: Successfully. Server message: %1").arg(data.message()));
     }
     else
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("KLinesIDList: Successfully. KLines ID list is empty. Server message: %1").arg(data.message()));
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("KLinesIDList: Successfully. KLines ID list is empty. Server message: %1").arg(data.message()));
     }
 
     return true;
@@ -459,7 +459,7 @@ bool NetworkCore::parseConfig(const QByteArray &answer)
 
     if (package.isError())
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("Config: Error parsing package: %1").arg(package.errorString()));
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("Config: Error parsing package: %1").arg(package.errorString()));
 
         return false;
     }
@@ -467,7 +467,7 @@ bool NetworkCore::parseConfig(const QByteArray &answer)
     const auto& status= package.status();
     if (status.code() != StatusAnswer::ErrorCode::OK)
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("Config: Server answer with error. Code: %1. Error: %2")
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("Config: Server answer with error. Code: %1. Error: %2")
                                                               .arg(StatusAnswer::errorCodeToStr(status.code()))
                                                               .arg(status.message()));
 
@@ -477,12 +477,12 @@ bool NetworkCore::parseConfig(const QByteArray &answer)
     const auto& data = package.data();
     if (data.isError())
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("Config: Error parsing data: %1").arg(data.errorString()));
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("Config: Error parsing data: %1").arg(data.errorString()));
 
         return false;
     }
 
-    emit sendLogMsg(TDBLoger::MSG_CODE::INFORMATION_CODE, QString("Config: Successfully. Server message: %1").arg(data.message()));
+    emit sendLogMsg(MSG_CODE::INFORMATION_CODE, QString("Config: Successfully. Server message: %1").arg(data.message()));
 
     return true;
 }
@@ -493,7 +493,7 @@ bool NetworkCore::parseLogout(const QByteArray &answer)
 
     if (package.isError())
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("Logout: Error parsing package: %1").arg(package.errorString()));
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("Logout: Error parsing package: %1").arg(package.errorString()));
 
         return false;
     }
@@ -501,7 +501,7 @@ bool NetworkCore::parseLogout(const QByteArray &answer)
     const auto& status= package.status();
     if (status.code() != StatusAnswer::ErrorCode::OK)
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("logout: Server answer with error. Code: %1. Error: %2")
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("logout: Server answer with error. Code: %1. Error: %2")
                                                               .arg(StatusAnswer::errorCodeToStr(status.code()))
                                                               .arg(status.message()));
 
@@ -511,7 +511,7 @@ bool NetworkCore::parseLogout(const QByteArray &answer)
     const auto& data = package.data();
     if (data.isError())
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("Logout: Error parsing data: %1").arg(data.errorString()));
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("Logout: Error parsing data: %1").arg(data.errorString()));
 
         return false;
     }
@@ -520,7 +520,7 @@ bool NetworkCore::parseLogout(const QByteArray &answer)
 
     emit logout();
 
-    emit sendLogMsg(TDBLoger::MSG_CODE::INFORMATION_CODE, QString("logout: Successfully. Server message: %1").arg(data.message()));
+    emit sendLogMsg(MSG_CODE::INFORMATION_CODE, QString("logout: Successfully. Server message: %1").arg(data.message()));
 
     return true;
 }
@@ -531,7 +531,7 @@ bool NetworkCore::parseDetect(const QByteArray &answer)
 
     if (package.isError())
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("Detect: Error parsing package: %1").arg(package.errorString()));
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("Detect: Error parsing package: %1").arg(package.errorString()));
 
         return false;
     }
@@ -539,7 +539,7 @@ bool NetworkCore::parseDetect(const QByteArray &answer)
     const auto& status= package.status();
     if (status.code() != StatusAnswer::ErrorCode::OK)
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("Detect: Server answer with error. Code: %1. Error: %2")
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("Detect: Server answer with error. Code: %1. Error: %2")
                                                               .arg(StatusAnswer::errorCodeToStr(status.code()))
                                                               .arg(status.message()));
 
@@ -549,7 +549,7 @@ bool NetworkCore::parseDetect(const QByteArray &answer)
     const auto& data = package.data();
     if (data.isError())
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::WARNING_CODE, QString("Detect: Error parsing data: %1").arg(data.errorString()));
+        emit sendLogMsg(MSG_CODE::WARNING_CODE, QString("Detect: Error parsing data: %1").arg(data.errorString()));
 
         return false;
     }
@@ -557,13 +557,13 @@ bool NetworkCore::parseDetect(const QByteArray &answer)
     const auto& detectData = data.klinesDetectedList();
     if (detectData.detected.empty())
     {
-        emit sendLogMsg(TDBLoger::MSG_CODE::INFORMATION_CODE, QString("Detect: Successfully. Detect data list is empty. Skip. Server message: %1").arg(data.message()));
+        emit sendLogMsg(MSG_CODE::INFORMATION_CODE, QString("Detect: Successfully. Detect data list is empty. Skip. Server message: %1").arg(data.message()));
     }
     else
     {
         emit klineDetect(detectData);
 
-        emit sendLogMsg(TDBLoger::MSG_CODE::INFORMATION_CODE, QString("Detect: Successfully. Server message: %1").arg(data.message()));
+        emit sendLogMsg(MSG_CODE::INFORMATION_CODE, QString("Detect: Successfully. Server message: %1").arg(data.message()));
     }
 
     return true;

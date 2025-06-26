@@ -47,7 +47,7 @@ MainWindow::MainWindow(QWidget *parent /* = nullptr */)
 {
     qRegisterMetaType<TradingCatCommon::Detector::KLinesDetectedList>("TradingCatCommon::Detector::KLinesDetectedList");
     qRegisterMetaType<TradingCatCommon::StockExchangesIDList>("TradingCatCommon::StockExchangesIDList");
-    qRegisterMetaType<Common::TDBLoger::MSG_CODE>("Common::TDBLoger::MSG_CODE");
+    qRegisterMetaType<Common::MSG_CODE>("Common::MSG_CODE");
     qRegisterMetaType<TradingCatCommon::UserConfig>("TradingCatCommon::UserConfig");
 
     //UI
@@ -73,8 +73,8 @@ MainWindow::MainWindow(QWidget *parent /* = nullptr */)
             SLOT(logoutNetworkCore()), Qt::QueuedConnection);
     connect(&_networkCore->networkCore, SIGNAL(klineDetect(const TradingCatCommon::Detector::KLinesDetectedList&)),
             SLOT(klineDetectNetworkCore(const TradingCatCommon::Detector::KLinesDetectedList&)), Qt::QueuedConnection);
-    connect(&_networkCore->networkCore, SIGNAL(sendLogMsg(Common::TDBLoger::MSG_CODE, const QString&)),
-            SLOT(sendLogMsgNetworkCore(Common::TDBLoger::MSG_CODE, const QString&)), Qt::QueuedConnection);
+    connect(&_networkCore->networkCore, SIGNAL(sendLogMsg(Common::MSG_CODE, const QString&)),
+            SLOT(sendLogMsgNetworkCore(Common::MSG_CODE, const QString&)), Qt::QueuedConnection);
     connect(&_networkCore->networkCore, SIGNAL(stockExchanges(const TradingCatCommon::StockExchangesIDList&)),
             SLOT(stockExchangesNetworkCore(const TradingCatCommon::StockExchangesIDList&)), Qt::QueuedConnection);
     connect(&_networkCore->networkCore, SIGNAL(klinesIdList(const TradingCatCommon::StockExchangeID&, const TradingCatCommon::PKLinesIDList&)),
@@ -729,32 +729,32 @@ void MainWindow::klinesIdListNetworkCore(const TradingCatCommon::StockExchangeID
     }
 }
 
-void MainWindow::sendLogMsgNetworkCore(Common::TDBLoger::MSG_CODE category, const QString &msg)
+void MainWindow::sendLogMsgNetworkCore(Common::MSG_CODE category, const QString &msg)
 {
     sendLogMsg(category, QString("Network core: %1").arg(msg));
 }
 
-void MainWindow::sendLogMsg(TDBLoger::MSG_CODE category, const QString &msg)
+void MainWindow::sendLogMsg(MSG_CODE category, const QString &msg)
 {
     switch (category)
     {
-    case TDBLoger::MSG_CODE::DEBUG_CODE:
+    case MSG_CODE::DEBUG_CODE:
 #ifdef QT_DEBUG
         qDebug() << msg;
         break;
 #else
         return;
 #endif
-    case TDBLoger::MSG_CODE::INFORMATION_CODE:
+    case MSG_CODE::INFORMATION_CODE:
         qInfo() << msg;
         break;
-    case TDBLoger::MSG_CODE::WARNING_CODE:
+    case MSG_CODE::WARNING_CODE:
         qWarning() << msg;
         break;
-    case TDBLoger::MSG_CODE::CRITICAL_CODE:
+    case MSG_CODE::CRITICAL_CODE:
         qCritical() << msg;
         break;
-    case TDBLoger::MSG_CODE::FATAL_CODE:
+    case MSG_CODE::FATAL_CODE:
         qFatal() << msg;
         break;
     default:
@@ -1366,9 +1366,13 @@ QColor MainWindow::stockExchangeColor(const TradingCatCommon::StockExchangeID &s
     {
         return QColor(97, 83, 161); //фиолетовый
     }
-    if (stockExchangeName == "MEXC_FUTURES")
+    else if (stockExchangeName == "MEXC_FUTURES")
     {
         return Qt::darkYellow; //желтый
+    }
+    else if (stockExchangeName == "BINGX_FUTURES")
+    {
+        return QColor(200, 108, 201); // розовый
     }
 
     else
