@@ -38,5 +38,6 @@
         <file>img/MEXC_FUTURES.png</file>
         <file>img/BITMART.png</file>
         <file>img/BINGX_FUTURES.png</file>
+        <file>img/BITMART_FUTURES.png</file>
     </qresource>
 </RCC>

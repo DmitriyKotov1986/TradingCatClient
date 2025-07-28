@@ -1374,6 +1374,10 @@ QColor MainWindow::stockExchangeColor(const TradingCatCommon::StockExchangeID &s
     {
         return QColor(200, 108, 201); // розовый
     }
+    else if (stockExchangeName == "BITMART_FUTURES")
+    {
+        return QColor(67, 113, 220); //синий
+    }
 
     else
     {
