@@ -1348,6 +1348,10 @@ QColor MainWindow::stockExchangeColor(const TradingCatCommon::StockExchangeID &s
     {
         return QColor(5, 55, 155); // синий
     }
+    else if (stockExchangeName == "LBANK")
+    {
+        return QColor(0, 200, 0); // зеленый
+    }
 
     //Futures
     else if (stockExchangeName == "KUCOIN_FUTURES")
