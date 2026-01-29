@@ -3,6 +3,7 @@
 #include "mainwindow.h"
 
 #include <QApplication>
+#include <QFontDatabase>
 
 QApplication *app = nullptr;
 MainWindow *appWindow = nullptr;
@@ -25,6 +26,21 @@ int main(int argc, char *argv[])
     QApplication::setApplicationVersion(QString("Version:0.2 Build: %1 %2").arg(__DATE__).arg(__TIME__));
 
     qDebug() << "Start" << QApplication::applicationName() << QApplication::applicationVersion();
+
+    // Загрузка файла шрифта
+    const auto fontId = QFontDatabase::addApplicationFont(":/font/font/NotoSansCJK-Regular.ttc");
+    if (fontId != -1)
+    {
+        QFont customFont("Noto Sans CJK SC");
+
+        // Применение шрифта
+        QApplication::setFont(customFont);
+        qDebug() << "Use custom font:" << customFont.family();
+    }
+    else
+    {
+        qDebug() << "The font is not load. Use font for default system" << QApplication::font().family();
+    }
 
     appWindow = new MainWindow();
 

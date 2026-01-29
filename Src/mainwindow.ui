@@ -47,7 +47,7 @@ color: rgb(255, 255, 255);</string>
        <enum>QTabWidget::TabShape::Rounded</enum>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>2</number>
       </property>
       <property name="iconSize">
        <size>
@@ -105,6 +105,13 @@ color: rgb(255, 255, 255);</string>
                 <width>100</width>
                 <height>0</height>
                </size>
+              </property>
+              <property name="font">
+               <font>
+                <family>Noto Sans CJK SC</family>
+                <italic>false</italic>
+                <bold>false</bold>
+               </font>
               </property>
               <property name="styleSheet">
                <string notr="true">border-color: grey;</string>
@@ -596,6 +603,12 @@ QCheckBox::indicator:checked
             <property name="orientation">
              <enum>Qt::Orientation::Horizontal</enum>
             </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>0</width>
+              <height>0</height>
+             </size>
+            </property>
            </spacer>
           </item>
          </layout>
@@ -701,6 +714,12 @@ QCheckBox::indicator:checked
            <spacer name="horizontalSpacer_3">
             <property name="orientation">
              <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>0</width>
+              <height>0</height>
+             </size>
             </property>
            </spacer>
           </item>

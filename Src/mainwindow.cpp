@@ -16,6 +16,7 @@
 #include <QRegularExpression>
 #include <QMenu>
 #include <QDialog>
+#include <QFontDatabase>
 
 //EM
 #include <emscripten/key_codes.h>
@@ -52,6 +53,11 @@ MainWindow::MainWindow(QWidget *parent /* = nullptr */)
 
     //UI
     ui->setupUi(this);
+
+    //Set fonts
+    const auto defaultFont = QApplication::font();
+    ui->eventsList->setFont(defaultFont);
+    ui->blackListTableWidget->setFont(defaultFont);
 
     if (_localCnf.user().isEmpty() || _localCnf.password().isEmpty())
     {
@@ -437,6 +443,7 @@ void MainWindow::makeChart()
     _seriesVolume->setPen(pen);
 
     auto chart = new QChart;
+    chart->setFont(QApplication::font());
     chart->addSeries(_seriesVolume);
     chart->addSeries(_series);
     chart->setTitle("No data");
@@ -522,6 +529,7 @@ void MainWindow::makeReviewChart()
     _reviewSeriesVolume->setPen(pen);
 
     auto chart = new QChart;
+    chart->setFont(QApplication::font());
     chart->addSeries(_reviewSeriesVolume);
     chart->addSeries(_reviewSeries);
 //    chart->setAnimationOptions(QChart::SeriesAnimations);
@@ -1088,6 +1096,7 @@ void MainWindow::updateReviewHistoryChart(quint64 index)
 QComboBox* MainWindow::makeStockExchangeComboBox(const QString &stockExchange) const
 {
     auto stockExchangeComboBox = new QComboBox();
+    stockExchangeComboBox->setFont(QApplication::font());
     stockExchangeComboBox->setEditable(false);
     stockExchangeComboBox->view()->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 
@@ -1113,6 +1122,7 @@ QComboBox* MainWindow::makeStockExchangeComboBox(const QString &stockExchange) c
 QComboBox *MainWindow::makeSymbolComboBox(const TradingCatCommon::KLineID &klineId) const
 {
     auto symbolComboBox = new QComboBox();
+    symbolComboBox->setFont(QApplication::font());
     symbolComboBox->setEditable(false);
 
     symbolComboBox->addItem(*SYMBOL_NAME_ALL, QVariant(*SYMBOL_NAME_ALL));
@@ -1171,6 +1181,7 @@ void MainWindow::makeFilterTab()
         QStringList headersLabel;
         headersLabel << "  Stock exchange  " << "  Delta  " << "  Volume  " << "";
         filterTableWidget->setHorizontalHeaderLabels(headersLabel);
+        filterTableWidget->horizontalHeader()->setMinimumSectionSize(10);
         filterTableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
         filterTableWidget->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
         filterTableWidget->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
@@ -1212,6 +1223,7 @@ void MainWindow::makeBlackListTab()
         QStringList headersLabel;
         headersLabel << "  Stock exchange  " << "  Symbol  " << "";
         blackListTableWidget->setHorizontalHeaderLabels(headersLabel);
+        blackListTableWidget->horizontalHeader()->setMinimumSectionSize(10);
         blackListTableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
         blackListTableWidget->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
         blackListTableWidget->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);

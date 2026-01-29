@@ -41,4 +41,7 @@
         <file>img/BITMART_FUTURES.png</file>
         <file>img/LBANK.png</file>
     </qresource>
+    <qresource prefix="/font">
+        <file>font/NotoSansCJK-Regular.ttc</file>
+    </qresource>
 </RCC>
